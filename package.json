@@ -1,0 +1,22 @@
+{
+  "name": "com.javienne.alternate-app-icons",
+  "version": "1.0.0",
+  "displayName": "Alternate App Icons",
+  "description": "Changes the app icon from the game, on iOS and Android. The alternate icons are declared and checked in a Project Settings page, and a build step adds them to the Xcode and Gradle projects.",
+  "unity": "6000.0",
+  "keywords": [
+    "ios",
+    "android",
+    "icon",
+    "app icon",
+    "alternate icon"
+  ],
+  "author": {
+    "name": "Javienne",
+    "url": "https://github.com/Omadel"
+  },
+  "license": "MIT",
+  "documentationUrl": "https://github.com/Omadel/alternate-app-icons#readme",
+  "changelogUrl": "https://github.com/Omadel/alternate-app-icons/blob/main/CHANGELOG.md",
+  "licensesUrl": "https://github.com/Omadel/alternate-app-icons/blob/main/LICENSE"
+}
