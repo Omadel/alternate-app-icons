@@ -24,7 +24,7 @@ namespace Javienne.AlternateAppIcons.Tests
       </intent-filter>
       <meta-data android:name=""unityplayer.UnityActivity"" android:value=""true"" />
     </activity>
-    <provider android:name=""com.javienne.rouflac.SplashScreenExit"" android:authorities=""${applicationId}.splash-screen-exit"" android:exported=""false"" />
+    <provider android:name=""com.example.game.SplashScreenExit"" android:authorities=""${applicationId}.splash-screen-exit"" android:exported=""false"" />
   </application>
 </manifest>";
 
@@ -74,7 +74,7 @@ namespace Javienne.AlternateAppIcons.Tests
         {
             var manifest = Load(AndroidManifestAliases.AddAliases(MANIFEST, _icons));
             var names = manifest.DocumentElement["application"].ChildNodes.OfType<XmlElement>().Select(element => element.GetAttribute("name", ANDROID_NAMESPACE));
-            Assert.That(names, Is.EqualTo(new[] { "unity.splash-mode", ACTIVITY, AndroidAliases.DEFAULT_ALIAS, AndroidAliases.AliasName("Hellhound"), AndroidAliases.AliasName("Scifi"), "com.javienne.rouflac.SplashScreenExit" }));
+            Assert.That(names, Is.EqualTo(new[] { "unity.splash-mode", ACTIVITY, AndroidAliases.DEFAULT_ALIAS, AndroidAliases.AliasName("Hellhound"), AndroidAliases.AliasName("Scifi"), "com.example.game.SplashScreenExit" }));
         }
 
         [Test]
