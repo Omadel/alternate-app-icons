@@ -7,7 +7,10 @@ namespace Javienne.AlternateAppIcons
     ///     Changes the app icon from the game, among the alternate icons declared in Project Settings > Alternate App
     ///     Icons, each called by its name; the default icon is the one of the Player Settings.
     ///     <list type="bullet">
-    ///         <item>iOS shows an alert at each change: change the icon at a calm moment.</item>
+    ///         <item>
+    ///             iOS shows an alert at each change: change the icon at a calm moment, while the app is in the
+    ///             foreground.
+    ///         </item>
     ///         <item>
     ///             Android applies the change when the app goes to the background, as some devices restart the app or
     ///             go back to the home screen when the icon changes. Android 7.1 and earlier cannot change it.
@@ -26,7 +29,7 @@ namespace Javienne.AlternateAppIcons
         public static bool IsSupported => Switcher.IsSupported;
 
         /// <summary>
-        ///     Names of the alternate icons the app was built with.
+        ///     Names of the alternate icons the app was built with, in alphabetical order.
         /// </summary>
         public static IReadOnlyList<string> Icons => Switcher.Icons;
 
@@ -71,6 +74,8 @@ namespace Javienne.AlternateAppIcons
             return EditorPlatform ?? new UnsupportedIconPlatform();
 #elif UNITY_ANDROID
             return AndroidIconPlatform.Create();
+#elif UNITY_IOS
+            return IosIconPlatform.Create();
 #else
             return new UnsupportedIconPlatform();
 #endif

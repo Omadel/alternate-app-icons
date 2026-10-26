@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace Javienne.AlternateAppIcons
@@ -26,7 +27,11 @@ namespace Javienne.AlternateAppIcons
         }
 
         public bool IsSupported => _platform.IsSupported;
-        public IReadOnlyList<string> Icons => _platform.IsSupported ? _platform.Icons : Array.Empty<string>();
+
+        /// <summary>
+        ///     Icons of the platform in alphabetical order, the same on every platform: iOS lists them in no order.
+        /// </summary>
+        public IReadOnlyList<string> Icons => _platform.IsSupported ? _platform.Icons.OrderBy(icon => icon, StringComparer.OrdinalIgnoreCase).ToArray() : Array.Empty<string>();
         public string CurrentIcon => _platform.IsSupported ? _platform.CurrentIcon : string.Empty;
 
         /// <summary>
@@ -58,7 +63,7 @@ namespace Javienne.AlternateAppIcons
 
             if (!TryResolve(name, out var icon))
             {
-                var error = $"No alternate icon is named \"{name}\". The app has {Describe(_platform.Icons)}.";
+                var error = $"No alternate icon is named \"{name}\". The app has {Describe(Icons)}.";
                 _logger.LogError(LOG_TAG, error);
                 completed(new IconChangeResult(IconChangeStatus.Failed, name, error));
                 return;

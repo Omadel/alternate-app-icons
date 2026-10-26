@@ -36,10 +36,17 @@ namespace Javienne.AlternateAppIcons.Tests
         }
 
         [Test]
+        public void Icons_ReturnsIconsInAlphabeticalOrder()
+        {
+            _platform.Icons = new[] { "Scifi", "hellhound", "Chocolate" };
+            Assert.That(_switcher.Icons, Is.EqualTo(new[] { "Chocolate", "hellhound", "Scifi" }));
+        }
+
+        [Test]
         public void Request_UnknownName_ReturnsFailedAndLogsError()
         {
             var result = Request("Robot");
-            Assert.That(_logs.Logs, Is.EqualTo(new[] { (LogType.Error, "Alternate App Icons: No alternate icon is named \"Robot\". The app has these alternate icons: Hellhound, Scifi, Chocolate.") }));
+            Assert.That(_logs.Logs, Is.EqualTo(new[] { (LogType.Error, "Alternate App Icons: No alternate icon is named \"Robot\". The app has these alternate icons: Chocolate, Hellhound, Scifi.") }));
             Assert.That(result.Status, Is.EqualTo(IconChangeStatus.Failed));
             Assert.That(result.Error, Does.Contain("Robot"));
             Assert.That(_platform.Applied, Is.Empty);
