@@ -18,5 +18,8 @@
   "license": "MIT",
   "documentationUrl": "https://github.com/Omadel/alternate-app-icons#readme",
   "changelogUrl": "https://github.com/Omadel/alternate-app-icons/blob/main/CHANGELOG.md",
-  "licensesUrl": "https://github.com/Omadel/alternate-app-icons/blob/main/LICENSE"
+  "licensesUrl": "https://github.com/Omadel/alternate-app-icons/blob/main/LICENSE",
+  "dependencies": {
+    "com.unity.modules.androidjni": "1.0.0"
+  }
 }

@@ -11,3 +11,5 @@ All notable changes to this package are documented in this file. The format foll
 - Project Settings page that declares the alternate icons with their iOS image and Android adaptive icon layers, shows their number and the size of their image files, and checks each icon live: name, missing images, PNG format, size, transparency.
 - `AppIcon` API: `IsSupported`, `Icons`, `CurrentIcon`, `PendingIcon`, and `SetIcon(name)`, awaitable, which does nothing for the icon already in place and reports an unknown name as an error.
 - Simulation of the change in the editor, logged and kept until the editor quits.
+- Android build step: checks the icons, writes their adaptive icons into the Unity library module, and declares an activity alias per icon in its manifest, the launcher entry moving to the alias of the default icon. An error leaves every alternate icon out of the build, or fails it with Fail Build On Error.
+- Android platform: enables the alias of the requested icon when the app goes to the background, on Android 8.0 and later.

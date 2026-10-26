@@ -10,12 +10,13 @@ namespace Javienne.AlternateAppIcons
     /// </summary>
     internal class IconFiles
     {
-        public IconFiles(string name, byte[] iosImage, byte[] androidForeground, bool usesBackgroundImage, byte[] androidBackground, byte[] androidMonochrome)
+        public IconFiles(string name, byte[] iosImage, byte[] androidForeground, bool usesBackgroundImage, Color androidBackgroundColour, byte[] androidBackground, byte[] androidMonochrome)
         {
             Name = name;
             IosImage = iosImage;
             AndroidForeground = androidForeground;
             UsesBackgroundImage = usesBackgroundImage;
+            AndroidBackgroundColour = androidBackgroundColour;
             AndroidBackground = androidBackground;
             AndroidMonochrome = androidMonochrome;
         }
@@ -29,6 +30,7 @@ namespace Javienne.AlternateAppIcons
         /// </summary>
         public bool UsesBackgroundImage { get; }
 
+        public Color AndroidBackgroundColour { get; }
         public byte[] AndroidBackground { get; }
         public byte[] AndroidMonochrome { get; }
 
@@ -38,7 +40,7 @@ namespace Javienne.AlternateAppIcons
         internal static IconFiles Read(AlternateIcon icon)
         {
             var usesBackgroundImage = icon.AndroidBackgroundKind == AndroidBackgroundKind.Image;
-            return new IconFiles(icon.Name, ReadFile(icon.IosImage), ReadFile(icon.AndroidForeground), usesBackgroundImage, usesBackgroundImage ? ReadFile(icon.AndroidBackgroundImage) : null, ReadFile(icon.AndroidMonochrome));
+            return new IconFiles(icon.Name, ReadFile(icon.IosImage), ReadFile(icon.AndroidForeground), usesBackgroundImage, icon.AndroidBackgroundColour, usesBackgroundImage ? ReadFile(icon.AndroidBackgroundImage) : null, ReadFile(icon.AndroidMonochrome));
         }
 
         /// <summary>

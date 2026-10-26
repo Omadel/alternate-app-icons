@@ -152,14 +152,14 @@ namespace Javienne.AlternateAppIcons.Tests
         [Test]
         public void Check_ValidIconWithColourBackground_ReturnsNoIssue()
         {
-            var icon = new IconFiles("Hellhound", Png(IOS, IOS, _opaque, TextureFormat.RGB24), Png(ANDROID, ANDROID, _clear, TextureFormat.RGBA32, _opaque), false, null, null);
+            var icon = new IconFiles("Hellhound", Png(IOS, IOS, _opaque, TextureFormat.RGB24), Png(ANDROID, ANDROID, _clear, TextureFormat.RGBA32, _opaque), false, Color.white, null, null);
             Assert.That(IconChecks.Check(new[] { icon })[0], Is.Empty);
         }
 
         [Test]
         public void Check_BackgroundImageNotSet_ReturnsMissingBackground()
         {
-            var icon = new IconFiles("Hellhound", Png(IOS, IOS, _opaque, TextureFormat.RGB24), Png(ANDROID, ANDROID, _opaque, TextureFormat.RGB24), true, null, null);
+            var icon = new IconFiles("Hellhound", Png(IOS, IOS, _opaque, TextureFormat.RGB24), Png(ANDROID, ANDROID, _opaque, TextureFormat.RGB24), true, Color.white, null, null);
             var issues = IconChecks.Check(new[] { icon })[0];
             Assert.That(issues.Select(issue => (issue.Field, issue.Kind)), Is.EqualTo(new[] { (IconField.AndroidBackground, IconIssueKind.MissingImage) }));
         }
@@ -167,8 +167,8 @@ namespace Javienne.AlternateAppIcons.Tests
         [Test]
         public void Check_SeveralProblems_ReturnsErrorsBeforeWarnings()
         {
-            var icon = new IconFiles("Scifi", Png(IOS, IOS, _opaque, TextureFormat.RGBA32), null, false, null, Png(ANDROID, ANDROID, _opaque, TextureFormat.RGB24));
-            var issues = IconChecks.Check(new[] { icon, new IconFiles("scifi", null, null, false, null, null) })[0];
+            var icon = new IconFiles("Scifi", Png(IOS, IOS, _opaque, TextureFormat.RGBA32), null, false, Color.white, null, Png(ANDROID, ANDROID, _opaque, TextureFormat.RGB24));
+            var issues = IconChecks.Check(new[] { icon, new IconFiles("scifi", null, null, false, Color.white, null, null) })[0];
             Assert.That(Kinds(issues), Is.EqualTo(new[] { IconIssueKind.DuplicateName, IconIssueKind.MissingImage, IconIssueKind.IosAlphaChannel, IconIssueKind.NotWhiteMonochrome }));
         }
 

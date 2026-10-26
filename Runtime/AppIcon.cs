@@ -69,6 +69,8 @@ namespace Javienne.AlternateAppIcons
         {
 #if UNITY_EDITOR
             return EditorPlatform ?? new UnsupportedIconPlatform();
+#elif UNITY_ANDROID
+            return AndroidIconPlatform.Create();
 #else
             return new UnsupportedIconPlatform();
 #endif
