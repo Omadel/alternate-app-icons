@@ -9,3 +9,5 @@ All notable changes to this package are documented in this file. The format foll
 - Package skeleton: manifest, runtime assembly, editor assembly and test assembly.
 - Name rules of the alternate icons: valid characters, and duplicates regardless of case.
 - Project Settings page that declares the alternate icons with their iOS image and Android adaptive icon layers, shows their number and the size of their image files, and checks each icon live: name, missing images, PNG format, size, transparency.
+- `AppIcon` API: `IsSupported`, `Icons`, `CurrentIcon`, `PendingIcon`, and `SetIcon(name)`, awaitable, which does nothing for the icon already in place and reports an unknown name as an error.
+- Simulation of the change in the editor, logged and kept until the editor quits.
