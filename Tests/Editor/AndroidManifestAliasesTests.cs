@@ -41,44 +41,29 @@ namespace Javienne.AlternateAppIcons.Tests
 </manifest>";
 
         /// <summary>
-        ///     Build steps of other packages look for the main activity with this path, and may run after this one.
+        ///     Manifest of the launcher module declaring the activity of Unity and an element after it.
         /// </summary>
-        private const string LAUNCHER_ACTIVITY_PATH = "/manifest/application/activity[intent-filter/category[@android:name='android.intent.category.LAUNCHER']]";
+        private const string LAUNCHER_MANIFEST_WITH_ACTIVITY = @"<?xml version=""1.0"" encoding=""utf-8""?>
+<manifest android:installLocation=""preferExternal"" xmlns:android=""http://schemas.android.com/apk/res/android"" xmlns:tools=""http://schemas.android.com/tools"">
+  <application android:icon=""@mipmap/app_icon"" android:label=""@string/app_name"" android:roundIcon=""@mipmap/app_icon_round"">
+    <activity android:name=""com.unity3d.player.UnityPlayerGameActivity"" android:resizeableActivity=""false"" />
+    <meta-data android:name=""com.example.game.key"" android:value=""1"" />
+  </application>
+  <supports-screens android:smallScreens=""true"" android:anyDensity=""true"" />
+</manifest>";
 
         private static readonly string[] _icons = { "Hellhound", "Scifi" };
 
         [Test]
-        public void AddAliases_NoIcon_ReturnsManifestsUnchanged()
+        public void AddAliases_NoIcon_ReturnsLauncherManifestUnchanged()
         {
-            var (library, launcher) = AndroidManifestAliases.AddAliases(MANIFEST, LAUNCHER_MANIFEST, new string[0]).Value;
-            Assert.That(library, Is.EqualTo(MANIFEST));
-            Assert.That(launcher, Is.EqualTo(LAUNCHER_MANIFEST));
-        }
-
-        [Test]
-        public void AddAliases_Icons_KeepsLauncherFilterOfActivity()
-        {
-            var manifest = Load(AndroidManifestAliases.AddAliases(MANIFEST, LAUNCHER_MANIFEST, _icons).Value.Library);
-            var activity = Element(manifest, "activity", ACTIVITY);
-            Assert.That(Categories(activity), Is.EqualTo(new[] { LAUNCHER_CATEGORY }));
-            Assert.That(Actions(activity), Is.EqualTo(new[] { MAIN_ACTION }));
-        }
-
-        [Test]
-        public void AddAliases_Icons_LeavesActivityToBuildStepsLookingForLauncher()
-        {
-            var manifest = Load(AndroidManifestAliases.AddAliases(MANIFEST, LAUNCHER_MANIFEST, _icons).Value.Library);
-            var namespaces = new XmlNamespaceManager(manifest.NameTable);
-            namespaces.AddNamespace("android", ANDROID_NAMESPACE);
-            var activity = manifest.SelectSingleNode(LAUNCHER_ACTIVITY_PATH, namespaces) as XmlElement;
-            Assert.That(activity, Is.Not.Null);
-            Assert.That(Attribute(activity, "name"), Is.EqualTo(ACTIVITY));
+            Assert.That(AndroidManifestAliases.AddAliases(MANIFEST, LAUNCHER_MANIFEST, new string[0]), Is.EqualTo(LAUNCHER_MANIFEST));
         }
 
         [Test]
         public void AddAliases_Icons_DeclaresEnabledDefaultAlias()
         {
-            var manifest = Load(AndroidManifestAliases.AddAliases(MANIFEST, LAUNCHER_MANIFEST, _icons).Value.Library);
+            var manifest = Load(AndroidManifestAliases.AddAliases(MANIFEST, LAUNCHER_MANIFEST, _icons));
             var alias = Element(manifest, "activity-alias", AndroidAliases.DEFAULT_ALIAS);
             Assert.That(Attribute(alias, "enabled"), Is.EqualTo("true"));
             Assert.That(Attribute(alias, "exported"), Is.EqualTo("true"));
@@ -91,7 +76,7 @@ namespace Javienne.AlternateAppIcons.Tests
         [Test]
         public void AddAliases_Icons_DeclaresDisabledAliasWithAdaptiveIconForEachIcon()
         {
-            var manifest = Load(AndroidManifestAliases.AddAliases(MANIFEST, LAUNCHER_MANIFEST, _icons).Value.Library);
+            var manifest = Load(AndroidManifestAliases.AddAliases(MANIFEST, LAUNCHER_MANIFEST, _icons));
             foreach (var icon in _icons)
             {
                 var alias = Element(manifest, "activity-alias", AndroidAliases.AliasName(icon));
@@ -105,17 +90,16 @@ namespace Javienne.AlternateAppIcons.Tests
         }
 
         [Test]
-        public void AddAliases_Icons_PutsAliasesRightAfterTheirActivity()
+        public void AddAliases_Icons_PutsAliasesAfterTheirActivity()
         {
-            var manifest = Load(AndroidManifestAliases.AddAliases(MANIFEST, LAUNCHER_MANIFEST, _icons).Value.Library);
-            var names = manifest.DocumentElement["application"].ChildNodes.OfType<XmlElement>().Select(element => element.GetAttribute("name", ANDROID_NAMESPACE));
-            Assert.That(names, Is.EqualTo(new[] { "unity.splash-mode", ACTIVITY, AndroidAliases.DEFAULT_ALIAS, AndroidAliases.AliasName("Hellhound"), AndroidAliases.AliasName("Scifi"), "com.example.game.SplashScreenExit" }));
+            var manifest = Load(AndroidManifestAliases.AddAliases(MANIFEST, LAUNCHER_MANIFEST, _icons));
+            Assert.That(ApplicationNames(manifest), Is.EqualTo(new[] { ACTIVITY, AndroidAliases.DEFAULT_ALIAS, AndroidAliases.AliasName("Hellhound"), AndroidAliases.AliasName("Scifi") }));
         }
 
         [Test]
-        public void AddAliases_Icons_RemovesLauncherFilterInLauncherManifest()
+        public void AddAliases_Icons_RemovesLauncherFilterOfActivity()
         {
-            var activity = Element(Load(AndroidManifestAliases.AddAliases(MANIFEST, LAUNCHER_MANIFEST, _icons).Value.Launcher), "activity", ACTIVITY);
+            var activity = Element(Load(AndroidManifestAliases.AddAliases(MANIFEST, LAUNCHER_MANIFEST, _icons)), "activity", ACTIVITY);
             var filters = Filters(activity);
             Assert.That(activity.Attributes.Count, Is.EqualTo(1));
             Assert.That(filters.Length, Is.EqualTo(2));
@@ -129,26 +113,26 @@ namespace Javienne.AlternateAppIcons.Tests
         public void AddAliases_LauncherFilterWithOtherElements_CopiesThemAll()
         {
             var manifest = MANIFEST.Replace("<action android:name=\"android.intent.action.MAIN\" />", "<action android:name=\"android.intent.action.MAIN\" />\n        <category android:name=\"android.intent.category.LEANBACK_LAUNCHER\" />");
-            var filters = Filters(Element(Load(AndroidManifestAliases.AddAliases(manifest, LAUNCHER_MANIFEST, _icons).Value.Launcher), "activity", ACTIVITY));
+            var filters = Filters(Element(Load(AndroidManifestAliases.AddAliases(manifest, LAUNCHER_MANIFEST, _icons)), "activity", ACTIVITY));
             Assert.That(Names(filters[0], null), Is.EqualTo(new[] { LAUNCHER_CATEGORY, MAIN_ACTION, "android.intent.category.LEANBACK_LAUNCHER" }));
             Assert.That(Names(filters[1], null), Is.EqualTo(new[] { MAIN_ACTION, "android.intent.category.LEANBACK_LAUNCHER" }));
         }
 
         [Test]
-        public void AddAliases_LauncherManifestDeclaringActivity_AddsFiltersToIt()
+        public void AddAliases_LauncherManifestDeclaringActivity_AddsFiltersToItAndAliasesAfterIt()
         {
-            var launcher = LAUNCHER_MANIFEST.Replace("android:roundIcon=\"@mipmap/app_icon_round\" />", "android:roundIcon=\"@mipmap/app_icon_round\">\n    <activity android:name=\"com.unity3d.player.UnityPlayerGameActivity\" android:resizeableActivity=\"false\" />\n  </application>");
-            var manifest = Load(AndroidManifestAliases.AddAliases(MANIFEST, launcher, _icons).Value.Launcher);
+            var manifest = Load(AndroidManifestAliases.AddAliases(MANIFEST, LAUNCHER_MANIFEST_WITH_ACTIVITY, _icons));
             var activity = Element(manifest, "activity", ACTIVITY);
             Assert.That(Attribute(activity, "resizeableActivity"), Is.EqualTo("false"));
             Assert.That(Filters(activity).Length, Is.EqualTo(2));
+            Assert.That(ApplicationNames(manifest), Is.EqualTo(new[] { ACTIVITY, AndroidAliases.DEFAULT_ALIAS, AndroidAliases.AliasName("Hellhound"), AndroidAliases.AliasName("Scifi"), "com.example.game.key" }));
         }
 
         [Test]
         public void AddAliases_LauncherManifestWithoutToolsNamespace_DeclaresIt()
         {
             var launcher = LAUNCHER_MANIFEST.Replace(" xmlns:tools=\"http://schemas.android.com/tools\"", string.Empty);
-            var manifest = AndroidManifestAliases.AddAliases(MANIFEST, launcher, _icons).Value.Launcher;
+            var manifest = AndroidManifestAliases.AddAliases(MANIFEST, launcher, _icons);
             Assert.That(manifest.Split("xmlns:tools=").Length, Is.EqualTo(2));
             Assert.That(Filters(Element(Load(manifest), "activity", ACTIVITY))[0].GetAttribute("node", TOOLS_NAMESPACE), Is.EqualTo("remove"));
         }
@@ -156,38 +140,34 @@ namespace Javienne.AlternateAppIcons.Tests
         [Test]
         public void AddAliases_Icons_KeepsDeclarationPrefixesAndLines()
         {
-            var (library, launcher) = AndroidManifestAliases.AddAliases(MANIFEST, LAUNCHER_MANIFEST, _icons).Value;
-            Assert.That(library, Does.StartWith("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android="));
-            Assert.That(library.Split("xmlns:android=").Length, Is.EqualTo(2));
-            Assert.That(library, Does.Contain("\n    <activity-alias android:name=\"com.javienne.alternateappicons.icon.Scifi\""));
-            Assert.That(library, Does.Contain("android:authorities=\"${applicationId}.splash-screen-exit\""));
-            Assert.That(launcher, Does.StartWith("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest android:installLocation="));
-            Assert.That(launcher, Does.Contain("android:roundIcon=\"@mipmap/app_icon_round\">\n    <activity android:name=\"com.unity3d.player.UnityPlayerGameActivity\">\n      <intent-filter tools:node=\"remove\">\n        <category android:name=\"android.intent.category.LAUNCHER\" />\n        <action android:name=\"android.intent.action.MAIN\" />\n      </intent-filter>\n      <intent-filter>\n        <action android:name=\"android.intent.action.MAIN\" />\n      </intent-filter>\n    </activity>\n  </application>\n  <supports-screens"));
+            var manifest = AndroidManifestAliases.AddAliases(MANIFEST, LAUNCHER_MANIFEST, _icons);
+            Assert.That(manifest, Does.StartWith("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest android:installLocation="));
+            Assert.That(manifest.Split("xmlns:android=").Length, Is.EqualTo(2));
+            Assert.That(manifest, Does.Contain("android:roundIcon=\"@mipmap/app_icon_round\">\n    <activity android:name=\"com.unity3d.player.UnityPlayerGameActivity\">\n      <intent-filter tools:node=\"remove\">\n        <category android:name=\"android.intent.category.LAUNCHER\" />\n        <action android:name=\"android.intent.action.MAIN\" />\n      </intent-filter>\n      <intent-filter>\n        <action android:name=\"android.intent.action.MAIN\" />\n      </intent-filter>\n    </activity>\n    <activity-alias android:name=\"com.javienne.alternateappicons.DefaultIcon\""));
+            Assert.That(manifest, Does.Contain("\n    <activity-alias android:name=\"com.javienne.alternateappicons.icon.Scifi\""));
+            Assert.That(manifest, Does.Contain(">\n      <intent-filter>\n        <action android:name=\"android.intent.action.MAIN\" />\n        <category android:name=\"android.intent.category.LAUNCHER\" />\n      </intent-filter>\n    </activity-alias>\n  </application>\n  <supports-screens"));
         }
 
         [Test]
         public void AddAliases_AgainWithOtherIcons_ReplacesPreviousAliasesAndFilterRemoval()
         {
-            var (library, launcher) = AndroidManifestAliases.AddAliases(MANIFEST, LAUNCHER_MANIFEST, _icons).Value;
-            var twice = AndroidManifestAliases.AddAliases(library, launcher, new[] { "Chocolate" });
+            var launcher = AndroidManifestAliases.AddAliases(MANIFEST, LAUNCHER_MANIFEST, _icons);
+            var twice = AndroidManifestAliases.AddAliases(MANIFEST, launcher, new[] { "Chocolate" });
             Assert.That(twice, Is.EqualTo(AndroidManifestAliases.AddAliases(MANIFEST, LAUNCHER_MANIFEST, new[] { "Chocolate" })));
         }
 
         [Test]
-        public void AddAliases_NoIconAfterIcons_RestoresManifests()
+        public void AddAliases_NoIconAfterIcons_RestoresLauncherManifest()
         {
-            var (library, launcher) = AndroidManifestAliases.AddAliases(MANIFEST, LAUNCHER_MANIFEST, _icons).Value;
-            var restored = AndroidManifestAliases.AddAliases(library, launcher, new string[0]).Value;
-            Assert.That(Load(restored.Library).OuterXml, Is.EqualTo(Load(MANIFEST).OuterXml));
-            Assert.That(restored.Launcher, Is.EqualTo(LAUNCHER_MANIFEST));
+            var launcher = AndroidManifestAliases.AddAliases(MANIFEST, LAUNCHER_MANIFEST, _icons);
+            Assert.That(AndroidManifestAliases.AddAliases(MANIFEST, launcher, new string[0]), Is.EqualTo(LAUNCHER_MANIFEST));
         }
 
         [Test]
-        public void AddAliases_NoIconAfterIconsInLauncherManifestDeclaringActivity_RestoresActivity()
+        public void AddAliases_NoIconAfterIconsInLauncherManifestDeclaringActivity_RestoresIt()
         {
-            var launcher = LAUNCHER_MANIFEST.Replace("android:roundIcon=\"@mipmap/app_icon_round\" />", "android:roundIcon=\"@mipmap/app_icon_round\">\n    <activity android:name=\"com.unity3d.player.UnityPlayerGameActivity\" android:resizeableActivity=\"false\" />\n  </application>");
-            var withIcons = AndroidManifestAliases.AddAliases(MANIFEST, launcher, _icons).Value.Launcher;
-            Assert.That(AndroidManifestAliases.AddAliases(MANIFEST, withIcons, new string[0]).Value.Launcher, Is.EqualTo(launcher));
+            var withIcons = AndroidManifestAliases.AddAliases(MANIFEST, LAUNCHER_MANIFEST_WITH_ACTIVITY, _icons);
+            Assert.That(AndroidManifestAliases.AddAliases(MANIFEST, withIcons, new string[0]), Is.EqualTo(LAUNCHER_MANIFEST_WITH_ACTIVITY));
         }
 
         [Test]
@@ -209,6 +189,14 @@ namespace Javienne.AlternateAppIcons.Tests
             var element = manifest.GetElementsByTagName(tag).OfType<XmlElement>().SingleOrDefault(candidate => candidate.GetAttribute("name", ANDROID_NAMESPACE) == name);
             Assert.That(element, Is.Not.Null, $"No {tag} named {name}.");
             return element;
+        }
+
+        /// <summary>
+        ///     Names of the elements of the application, in their order.
+        /// </summary>
+        private static string[] ApplicationNames(XmlDocument manifest)
+        {
+            return manifest.DocumentElement["application"].ChildNodes.OfType<XmlElement>().Select(element => element.GetAttribute("name", ANDROID_NAMESPACE)).ToArray();
         }
 
         private static XmlElement[] Filters(XmlElement component)

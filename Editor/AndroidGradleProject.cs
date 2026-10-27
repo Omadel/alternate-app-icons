@@ -6,9 +6,10 @@ using System.Linq;
 namespace Javienne.AlternateAppIcons
 {
     /// <summary>
-    ///     Adds the alternate icons to the Gradle project of an Android build: their resources and their activity aliases
-    ///     in the Unity library module, where the launcher activity is, and in the manifest of the launcher module, what
-    ///     removes the launcher filter of this activity from the merged manifest.
+    ///     Adds the alternate icons to the Gradle project of an Android build: their resources in the Unity library
+    ///     module, where the launcher activity is, and their activity aliases in the manifest of the launcher module, with
+    ///     what removes the launcher filter of this activity from the merged manifest. The manifest of the Unity library
+    ///     stays as Unity writes it.
     /// </summary>
     internal static class AndroidGradleProject
     {
@@ -44,8 +45,7 @@ namespace Javienne.AlternateAppIcons
             }
 
             AndroidIconResources.Write(Path.Combine(main, "res"), icons);
-            if (withAliases.Value.Library != library) File.WriteAllText(libraryPath, withAliases.Value.Library);
-            if (withAliases.Value.Launcher != launcher) File.WriteAllText(launcherPath, withAliases.Value.Launcher);
+            if (withAliases != launcher) File.WriteAllText(launcherPath, withAliases);
         }
     }
 }

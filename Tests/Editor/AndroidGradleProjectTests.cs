@@ -58,10 +58,19 @@ namespace Javienne.AlternateAppIcons.Tests
         public void AddIcons_ValidIcons_WritesAliasesFilterRemovalAndResources()
         {
             AndroidGradleProject.AddIcons(_unityLibrary, new[] { TestIcons.Valid("Hellhound") }, false, _warnings.Add);
-            Assert.That(File.ReadAllText(_manifestPath), Does.Contain(AndroidAliases.AliasName("Hellhound")));
+            Assert.That(File.ReadAllText(_launcherManifestPath), Does.Contain(AndroidAliases.AliasName("Hellhound")));
             Assert.That(File.ReadAllText(_launcherManifestPath), Does.Contain("<intent-filter tools:node=\"remove\">"));
             Assert.That(File.Exists(_foregroundPath), Is.True);
             Assert.That(_warnings, Is.Empty);
+        }
+
+        [Test]
+        public void AddIcons_ValidIcons_LeavesLibraryManifestUntouched()
+        {
+            var written = File.GetLastWriteTimeUtc(_manifestPath);
+            AndroidGradleProject.AddIcons(_unityLibrary, new[] { TestIcons.Valid("Hellhound") }, false, _warnings.Add);
+            Assert.That(File.GetLastWriteTimeUtc(_manifestPath), Is.EqualTo(written));
+            Assert.That(File.ReadAllText(_manifestPath), Is.EqualTo(MANIFEST));
         }
 
         [Test]

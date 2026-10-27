@@ -7,12 +7,13 @@ using System.Xml;
 namespace Javienne.AlternateAppIcons
 {
     /// <summary>
-    ///     Declares the activity aliases of the alternate icons in the Android manifests of the Gradle project. In the
-    ///     manifest of the Unity library module, the alias of the default icon, enabled, and an alias per alternate icon,
-    ///     disabled, with its adaptive icon, follow the launcher activity, as the manifest merger requires. This activity
-    ///     keeps its launcher filter there, for the other build steps that look for it: the manifest of the launcher
-    ///     module, which has priority at the merge, removes this filter from the merged manifest and gives the activity a
-    ///     copy of it without the launcher category.
+    ///     Declares the activity aliases of the alternate icons in the manifest of the launcher module of the Gradle
+    ///     project, which has priority at the merge, and leaves the manifest of the Unity library module as Unity writes
+    ///     it, for the build steps that read it: those of other packages that look for the launcher activity there, and
+    ///     Build And Run, which launches the launcher activity it finds there. The manifest of the launcher module removes
+    ///     the launcher filter of this activity from the merged manifest, gives the activity a copy of it without the
+    ///     launcher category, and declares after the activity the alias of the default icon, enabled, and an alias per
+    ///     alternate icon, disabled, with its adaptive icon, as the manifest merger requires.
     /// </summary>
     internal static class AndroidManifestAliases
     {
@@ -25,33 +26,31 @@ namespace Javienne.AlternateAppIcons
         private const string INDENT = "  ";
 
         /// <summary>
-        ///     Manifests of the Unity library and launcher modules with the aliases of the icons, replacing what a previous
-        ///     build wrote: without icons, the manifests as they were before. Null when the manifest of the Unity library
-        ///     has no launcher activity for the aliases to open.
+        ///     Manifest of the launcher module with the aliases of the icons, replacing what a previous build wrote:
+        ///     without icons, the manifest as it was before. Null when the manifest of the Unity library has no launcher
+        ///     activity for the aliases to open.
         /// </summary>
-        internal static (string Library, string Launcher)? AddAliases(string library, string launcher, IReadOnlyList<string> icons)
+        internal static string AddAliases(string library, string launcher, IReadOnlyList<string> icons)
         {
-            var libraryDocument = Load(library);
-            var launcherDocument = Load(launcher);
-            var application = libraryDocument.DocumentElement?["application"];
-            var launcherApplication = launcherDocument.DocumentElement?["application"];
-            var hadAliases = application != null && RemoveAliases(application);
-            var hadFilterRemovals = launcherApplication != null && RemoveFilterRemovals(launcherApplication);
-            if (icons.Count == 0) return (hadAliases ? Serialize(libraryDocument) : library, hadFilterRemovals ? Serialize(launcherDocument) : launcher);
+            var document = Load(launcher);
+            var application = document.DocumentElement?["application"];
+            var hadAliases = application != null && (RemoveAliases(application) | RemoveFilterRemovals(application));
+            if (icons.Count == 0) return hadAliases ? Serialize(document) : launcher;
 
-            var activity = application == null ? null : Elements(application, "activity").FirstOrDefault(element => FindLauncherFilter(element) != null);
-            if (activity == null) return null;
+            var libraryApplication = Load(library).DocumentElement?["application"];
+            var libraryActivity = libraryApplication == null ? null : Elements(libraryApplication, "activity").FirstOrDefault(element => FindLauncherFilter(element) != null);
+            if (libraryActivity == null) return null;
 
+            var target = GetAndroidAttribute(libraryActivity, "name");
+            var activity = AddFilterRemoval(application ?? AppendElement(document.DocumentElement, document.CreateElement("application")), target, FindLauncherFilter(libraryActivity));
             var indent = IndentOf(activity);
-            var target = GetAndroidAttribute(activity, "name");
-            var previous = InsertAfter(activity, CreateAlias(libraryDocument, AndroidAliases.DEFAULT_ALIAS, null, true, target, indent), indent);
+            var previous = InsertAfter(activity, CreateAlias(document, AndroidAliases.DEFAULT_ALIAS, null, true, target, indent), indent);
             foreach (var icon in icons)
             {
-                previous = InsertAfter(previous, CreateAlias(libraryDocument, AndroidAliases.AliasName(icon), AndroidIconResources.IconReference(icon), false, target, indent), indent);
+                previous = InsertAfter(previous, CreateAlias(document, AndroidAliases.AliasName(icon), AndroidIconResources.IconReference(icon), false, target, indent), indent);
             }
 
-            AddFilterRemoval(launcherApplication ?? AppendElement(launcherDocument.DocumentElement, launcherDocument.CreateElement("application")), target, FindLauncherFilter(activity));
-            return (Serialize(libraryDocument), Serialize(launcherDocument));
+            return Serialize(document);
         }
 
         /// <summary>
@@ -69,11 +68,11 @@ namespace Javienne.AlternateAppIcons
         }
 
         /// <summary>
-        ///     In the manifest of the launcher module, removes the launcher filter of an activity from the merged manifest,
-        ///     and gives the activity a copy of the filter without the launcher category. The merger finds the filter to
-        ///     remove by its actions and categories, so the removal copies all its elements.
+        ///     Removes the launcher filter of an activity from the merged manifest, and gives the activity a copy of the
+        ///     filter without the launcher category. The merger finds the filter to remove by its actions and categories,
+        ///     so the removal copies all its elements. Returns the activity, declared if the manifest did not declare it.
         /// </summary>
-        private static void AddFilterRemoval(XmlElement application, string activityName, XmlElement filter)
+        private static XmlElement AddFilterRemoval(XmlElement application, string activityName, XmlElement filter)
         {
             var document = application.OwnerDocument;
             if (document.DocumentElement.GetNamespaceOfPrefix(TOOLS_PREFIX) != TOOLS_NAMESPACE) document.DocumentElement.SetAttribute("xmlns:" + TOOLS_PREFIX, TOOLS_NAMESPACE);
@@ -81,6 +80,7 @@ namespace Javienne.AlternateAppIcons
             var activity = Elements(application, "activity").FirstOrDefault(element => GetAndroidAttribute(element, "name") == activityName) ?? AppendElement(application, CreateElement(document, "activity", ("name", activityName)));
             SetAttribute(AppendCopy(activity, filter), TOOLS_PREFIX, TOOLS_NAMESPACE, "node", "remove");
             Remove(FindCategory(AppendCopy(activity, filter)));
+            return activity;
         }
 
         /// <summary>
