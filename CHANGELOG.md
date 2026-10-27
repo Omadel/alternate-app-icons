@@ -2,6 +2,12 @@
 
 All notable changes to this package are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-10-27
+
+### Fixed
+
+- Android build step: the activity of Unity keeps its launcher filter in the manifest of the Unity library module, so that the build steps of other packages that look for the main activity by its launcher category find it, even when they run after this one. The manifest of the launcher module now removes this filter from the merged manifest, where the launcher entry is still on the aliases only.
+
 ## [1.0.0] - 2026-10-26
 
 First release, for Unity 6000.0 and later.
@@ -28,4 +34,5 @@ First release, for Unity 6000.0 and later.
 - README, with the measured download size of an icon.
 - Edit Mode tests for the names, the checks, the reading of the PNG files, the logic of the API, the aliases, the manifest, the resources, the checks at build time, and the iOS and Android build steps.
 
+[1.0.1]: https://github.com/Omadel/alternate-app-icons/releases/tag/v1.0.1
 [1.0.0]: https://github.com/Omadel/alternate-app-icons/releases/tag/v1.0.0

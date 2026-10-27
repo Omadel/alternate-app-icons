@@ -21,13 +21,13 @@ The package comes with:
 In the Package Manager, choose **+ › Install package from git URL…** and enter:
 
 ```
-https://github.com/Omadel/alternate-app-icons.git#v1.0.0
+https://github.com/Omadel/alternate-app-icons.git#v1.0.1
 ```
 
 Or add this line to the `dependencies` of `Packages/manifest.json`:
 
 ```json
-"com.javienne.alternate-app-icons": "https://github.com/Omadel/alternate-app-icons.git#v1.0.0"
+"com.javienne.alternate-app-icons": "https://github.com/Omadel/alternate-app-icons.git#v1.0.1"
 ```
 
 To update, change the tag at the end of the URL. The Package Manager does not list the versions of a git package.
@@ -158,9 +158,14 @@ After Unity generates the Gradle project, the package checks the icons again, th
 
 - copies the layers as they are to `res/mipmap-xxxhdpi/alternate_icon_<name>_foreground.png`, `_background.png` and `_monochrome.png`, the name in lower case;
 - writes the adaptive icon `res/mipmap-anydpi-v26/alternate_icon_<name>.xml`, and in `res/values/alternate_app_icons.xml` its background colour and a fallback for Android 7.1 and earlier, never shown;
-- in the manifest, moves the launcher category from the activity of Unity to the aliases, declared just after it: `com.javienne.alternateappicons.DefaultIcon`, enabled, with the icon of the Player Settings, and `com.javienne.alternateappicons.icon.<name>` for each icon, disabled.
+- in the manifest, declares the aliases just after the activity of Unity: `com.javienne.alternateappicons.DefaultIcon`, enabled, with the icon of the Player Settings, and `com.javienne.alternateappicons.icon.<name>` for each icon, disabled.
 
-The activity of Unity keeps its main action and stays exported, so `adb shell am start -n` still starts it. Each build first removes what a previous build wrote. The `launcher` module, where Unity writes the default icon, is not touched.
+The activity of Unity keeps its launcher filter in this manifest, so that the build steps of other packages that look for the main activity by its launcher category find it, even when they run after this one. The launcher entry moves to the aliases when Gradle merges the manifests: in the manifest of the `launcher` module, which has priority, the package declares the activity of Unity with two copies of its launcher filter:
+
+- one marked `tools:node="remove"`, which removes the filter from the merged manifest, the merger matching it by its actions and categories;
+- one without the launcher category, so that the activity keeps its main action.
+
+The activity of Unity stays exported, so `adb shell am start -n` still starts it. Each build first removes what a previous build wrote. In the `launcher` module, where Unity writes the default icon, the package changes the manifest only.
 
 ## Download size
 
@@ -183,7 +188,8 @@ The settings page shows the size of the image files, which the builds compress a
 
 - iOS shows its alert at each change, and Android closes the app at each change, in the background.
 - Each icon has one image on iOS, and one image per layer on Android, at the xxxhdpi density: no dark or tinted variant on iOS 18 and later.
-- The build steps expect the projects that Unity generates: the asset catalog `Unity-iPhone/Images.xcassets` in the Xcode project, and an activity with the main action and the launcher category in the manifest of `unityLibrary`. Otherwise the build logs a warning and has no alternate icon.
+- The build steps expect the projects that Unity generates: the asset catalog `Unity-iPhone/Images.xcassets` in the Xcode project, and, in the Gradle project, a manifest in the `launcher` module and an activity with the main action and the launcher category in the manifest of `unityLibrary`. Otherwise the build logs a warning and has no alternate icon.
+- On Android, a build step of another package that changes the launcher filter of the activity of Unity after this one, adding a category to it for example, makes the merger miss the filter to remove: the app then shows twice in the launcher, once with the default icon, and nothing reports it. Such a step should run before this one, with a `callbackOrder` below 0. The steps that only add filters of their own to the activity are not concerned.
 - Verified with Unity 6000.3 and Xcode 27.1, on an iPad (A16) with iPadOS 27 and on a Pixel 6 with Android 17. Not verified on Android 8 to 16, nor with other launchers.
 
 ## Tests

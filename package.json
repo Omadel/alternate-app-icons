@@ -1,6 +1,6 @@
 {
   "name": "com.javienne.alternate-app-icons",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "displayName": "Alternate App Icons",
   "description": "Changes the app icon from the game, on iOS and Android. The alternate icons are declared and checked in a Project Settings page, and a build step adds them to the Xcode and Gradle projects.",
   "unity": "6000.0",
