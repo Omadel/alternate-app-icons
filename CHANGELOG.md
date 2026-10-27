@@ -2,6 +2,12 @@
 
 All notable changes to this package are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-10-27
+
+### Fixed
+
+- Android build step: Build And Run no longer asks which activity to launch. Unity looks for it in the manifest of the Unity library module, where it found both the activity of Unity and the alias of the default icon since 1.0.1. The aliases are now declared in the manifest of the launcher module, after the activity, and the manifest of the Unity library module stays as Unity writes it. Build And Run launches the activity of Unity, which also works when an alternate icon is in place, unlike the alias of the default icon, then disabled.
+
 ## [1.0.1] - 2026-10-27
 
 ### Fixed
@@ -34,5 +40,6 @@ First release, for Unity 6000.0 and later.
 - README, with the measured download size of an icon.
 - Edit Mode tests for the names, the checks, the reading of the PNG files, the logic of the API, the aliases, the manifest, the resources, the checks at build time, and the iOS and Android build steps.
 
+[1.0.2]: https://github.com/Omadel/alternate-app-icons/releases/tag/v1.0.2
 [1.0.1]: https://github.com/Omadel/alternate-app-icons/releases/tag/v1.0.1
 [1.0.0]: https://github.com/Omadel/alternate-app-icons/releases/tag/v1.0.0

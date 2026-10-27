@@ -21,13 +21,13 @@ The package comes with:
 In the Package Manager, choose **+ › Install package from git URL…** and enter:
 
 ```
-https://github.com/Omadel/alternate-app-icons.git#v1.0.1
+https://github.com/Omadel/alternate-app-icons.git#v1.0.2
 ```
 
 Or add this line to the `dependencies` of `Packages/manifest.json`:
 
 ```json
-"com.javienne.alternate-app-icons": "https://github.com/Omadel/alternate-app-icons.git#v1.0.1"
+"com.javienne.alternate-app-icons": "https://github.com/Omadel/alternate-app-icons.git#v1.0.2"
 ```
 
 To update, change the tag at the end of the URL. The Package Manager does not list the versions of a git package.
@@ -157,15 +157,15 @@ Xcode then builds the sizes of each device from the image, and lists the icons i
 After Unity generates the Gradle project, the package checks the icons again, then, in the `unityLibrary` module:
 
 - copies the layers as they are to `res/mipmap-xxxhdpi/alternate_icon_<name>_foreground.png`, `_background.png` and `_monochrome.png`, the name in lower case;
-- writes the adaptive icon `res/mipmap-anydpi-v26/alternate_icon_<name>.xml`, and in `res/values/alternate_app_icons.xml` its background colour and a fallback for Android 7.1 and earlier, never shown;
-- in the manifest, declares the aliases just after the activity of Unity: `com.javienne.alternateappicons.DefaultIcon`, enabled, with the icon of the Player Settings, and `com.javienne.alternateappicons.icon.<name>` for each icon, disabled.
+- writes the adaptive icon `res/mipmap-anydpi-v26/alternate_icon_<name>.xml`, and in `res/values/alternate_app_icons.xml` its background colour and a fallback for Android 7.1 and earlier, never shown.
 
-The activity of Unity keeps its launcher filter in this manifest, so that the build steps of other packages that look for the main activity by its launcher category find it, even when they run after this one. The launcher entry moves to the aliases when Gradle merges the manifests: in the manifest of the `launcher` module, which has priority, the package declares the activity of Unity with two copies of its launcher filter:
+In the manifest of the `launcher` module, which has priority when Gradle merges the manifests, it declares the activity of Unity with two copies of its launcher filter, then the aliases after it:
 
-- one marked `tools:node="remove"`, which removes the filter from the merged manifest, the merger matching it by its actions and categories;
-- one without the launcher category, so that the activity keeps its main action.
+- a copy marked `tools:node="remove"`, which removes the filter from the merged manifest, the merger matching it by its actions and categories;
+- a copy without the launcher category, so that the activity keeps its main action;
+- the aliases `com.javienne.alternateappicons.DefaultIcon`, enabled, with the icon of the Player Settings, and `com.javienne.alternateappicons.icon.<name>` for each icon, disabled.
 
-The activity of Unity stays exported, so `adb shell am start -n` still starts it. Each build first removes what a previous build wrote. In the `launcher` module, where Unity writes the default icon, the package changes the manifest only.
+The manifest of `unityLibrary` stays as Unity writes it, with the launcher filter on the activity of Unity: the build steps of other packages that look for the main activity there by its launcher category find it, even when they run after this one, and Build And Run, which looks there for the activity to launch, launches the activity of Unity without asking. The launcher entry moves to the aliases in the merged manifest only. The activity of Unity stays exported, so `adb shell am start -n` still starts it, whichever icon is in place. Each build first removes what a previous build wrote. In the `launcher` module, where Unity writes the default icon, the package changes the manifest only.
 
 ## Download size
 
