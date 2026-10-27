@@ -6,41 +6,46 @@ using System.Linq;
 namespace Javienne.AlternateAppIcons
 {
     /// <summary>
-    ///     Adds the alternate icons to the Gradle project of an Android build, in the Unity library module, where the
-    ///     launcher activity is: their resources, and their activity aliases in its manifest.
+    ///     Adds the alternate icons to the Gradle project of an Android build: their resources and their activity aliases
+    ///     in the Unity library module, where the launcher activity is, and in the manifest of the launcher module, what
+    ///     removes the launcher filter of this activity from the merged manifest.
     /// </summary>
     internal static class AndroidGradleProject
     {
         private const string PLATFORM = "Android";
 
         /// <summary>
-        ///     Checks the icons, then writes them into the Unity library module, replacing those of a previous build; with
-        ///     an error, the build has no alternate icon.
+        ///     Checks the icons, then writes them into the Gradle project, replacing those of a previous build; with an
+        ///     error, the build has no alternate icon.
         /// </summary>
         internal static void AddIcons(string unityLibrary, IReadOnlyList<IconFiles> icons, bool failBuildOnError, Action<string> logWarning)
         {
             var main = Path.Combine(unityLibrary, "src", "main");
-            var manifestPath = Path.Combine(main, "AndroidManifest.xml");
-            if (!File.Exists(manifestPath))
+            var libraryPath = Path.Combine(main, "AndroidManifest.xml");
+            var launcherPath = Path.GetFullPath(Path.Combine(unityLibrary, "..", "launcher", "src", "main", "AndroidManifest.xml"));
+            var missing = new[] { libraryPath, launcherPath }.FirstOrDefault(path => !File.Exists(path));
+            if (missing != null)
             {
-                if (icons.Count > 0) logWarning($"Alternate App Icons: the Android build has no alternate icon, as the Unity library module has no manifest at {manifestPath}.");
+                if (icons.Count > 0) logWarning($"Alternate App Icons: the Android build has no alternate icon, as the Gradle project has no manifest at {missing}.");
 
                 return;
             }
 
             if (!IconBuildCheck.Run(icons, PLATFORM, issue => issue.ConcernsAndroid, failBuildOnError, logWarning)) icons = Array.Empty<IconFiles>();
 
-            var manifest = File.ReadAllText(manifestPath);
-            var withAliases = AndroidManifestAliases.AddAliases(manifest, icons.Select(icon => icon.Name).ToList());
+            var library = File.ReadAllText(libraryPath);
+            var launcher = File.ReadAllText(launcherPath);
+            var withAliases = AndroidManifestAliases.AddAliases(library, launcher, icons.Select(icon => icon.Name).ToList());
             if (withAliases == null)
             {
-                logWarning($"Alternate App Icons: the Android build has no alternate icon, as no activity of {manifestPath} has the main action and the launcher category.");
+                logWarning($"Alternate App Icons: the Android build has no alternate icon, as no activity of {libraryPath} has the main action and the launcher category.");
                 icons = Array.Empty<IconFiles>();
-                withAliases = AndroidManifestAliases.AddAliases(manifest, Array.Empty<string>());
+                withAliases = AndroidManifestAliases.AddAliases(library, launcher, Array.Empty<string>());
             }
 
             AndroidIconResources.Write(Path.Combine(main, "res"), icons);
-            if (withAliases != manifest) File.WriteAllText(manifestPath, withAliases);
+            if (withAliases.Value.Library != library) File.WriteAllText(libraryPath, withAliases.Value.Library);
+            if (withAliases.Value.Launcher != launcher) File.WriteAllText(launcherPath, withAliases.Value.Launcher);
         }
     }
 }

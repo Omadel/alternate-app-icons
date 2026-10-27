@@ -7,74 +7,139 @@ using System.Xml;
 namespace Javienne.AlternateAppIcons
 {
     /// <summary>
-    ///     Declares the activity aliases of the alternate icons in the Android manifest of the Unity library module. The
-    ///     launcher category moves from the launcher activity to the alias of the default icon, enabled, and each
-    ///     alternate icon gets an alias of its own, disabled, with its adaptive icon. The aliases follow their activity, as
-    ///     the manifest merger requires.
+    ///     Declares the activity aliases of the alternate icons in the Android manifests of the Gradle project. In the
+    ///     manifest of the Unity library module, the alias of the default icon, enabled, and an alias per alternate icon,
+    ///     disabled, with its adaptive icon, follow the launcher activity, as the manifest merger requires. This activity
+    ///     keeps its launcher filter there, for the other build steps that look for it: the manifest of the launcher
+    ///     module, which has priority at the merge, removes this filter from the merged manifest and gives the activity a
+    ///     copy of it without the launcher category.
     /// </summary>
     internal static class AndroidManifestAliases
     {
         private const string ANDROID_NAMESPACE = "http://schemas.android.com/apk/res/android";
         private const string ANDROID_PREFIX = "android";
+        private const string TOOLS_NAMESPACE = "http://schemas.android.com/tools";
+        private const string TOOLS_PREFIX = "tools";
         private const string MAIN_ACTION = "android.intent.action.MAIN";
         private const string LAUNCHER_CATEGORY = "android.intent.category.LAUNCHER";
         private const string INDENT = "  ";
 
         /// <summary>
-        ///     Manifest with the aliases of the icons, replacing those of a previous build: without icons, the manifest as
-        ///     it was before any alias. Null when it has no launcher activity for the aliases to open.
+        ///     Manifests of the Unity library and launcher modules with the aliases of the icons, replacing what a previous
+        ///     build wrote: without icons, the manifests as they were before. Null when the manifest of the Unity library
+        ///     has no launcher activity for the aliases to open.
         /// </summary>
-        internal static string AddAliases(string manifest, IReadOnlyList<string> icons)
+        internal static (string Library, string Launcher)? AddAliases(string library, string launcher, IReadOnlyList<string> icons)
         {
-            var document = new XmlDocument { PreserveWhitespace = true };
-            document.LoadXml(manifest);
-            var application = document.DocumentElement?["application"];
-            if (application == null) return icons.Count == 0 ? manifest : null;
+            var libraryDocument = Load(library);
+            var launcherDocument = Load(launcher);
+            var application = libraryDocument.DocumentElement?["application"];
+            var launcherApplication = launcherDocument.DocumentElement?["application"];
+            var hadAliases = application != null && RemoveAliases(application);
+            var hadFilterRemovals = launcherApplication != null && RemoveFilterRemovals(launcherApplication);
+            if (icons.Count == 0) return (hadAliases ? Serialize(libraryDocument) : library, hadFilterRemovals ? Serialize(launcherDocument) : launcher);
 
-            var hadAliases = RemoveAliases(application);
-            if (icons.Count == 0) return hadAliases ? Serialize(document) : manifest;
-
-            var activity = Elements(application, "activity").FirstOrDefault(element => FindFilter(element, true) != null);
+            var activity = application == null ? null : Elements(application, "activity").FirstOrDefault(element => FindLauncherFilter(element) != null);
             if (activity == null) return null;
 
-            Remove(FindCategory(FindFilter(activity, true)));
             var indent = IndentOf(activity);
             var target = GetAndroidAttribute(activity, "name");
-            var previous = InsertAfter(activity, CreateAlias(document, AndroidAliases.DEFAULT_ALIAS, null, true, target, indent), indent);
+            var previous = InsertAfter(activity, CreateAlias(libraryDocument, AndroidAliases.DEFAULT_ALIAS, null, true, target, indent), indent);
             foreach (var icon in icons)
             {
-                previous = InsertAfter(previous, CreateAlias(document, AndroidAliases.AliasName(icon), AndroidIconResources.IconReference(icon), false, target, indent), indent);
+                previous = InsertAfter(previous, CreateAlias(libraryDocument, AndroidAliases.AliasName(icon), AndroidIconResources.IconReference(icon), false, target, indent), indent);
             }
 
-            return Serialize(document);
+            AddFilterRemoval(launcherApplication ?? AppendElement(launcherDocument.DocumentElement, launcherDocument.CreateElement("application")), target, FindLauncherFilter(activity));
+            return (Serialize(libraryDocument), Serialize(launcherDocument));
         }
 
         /// <summary>
-        ///     Removes the aliases of a previous build, and gives the launcher category back to their activity.
+        ///     Removes the aliases of a previous build.
         /// </summary>
         private static bool RemoveAliases(XmlElement application)
         {
             var aliases = Elements(application, "activity-alias").Where(alias => GetAndroidAttribute(alias, "name").StartsWith(AndroidAliases.PREFIX)).ToList();
             foreach (var alias in aliases)
             {
-                if (GetAndroidAttribute(alias, "name") == AndroidAliases.DEFAULT_ALIAS) RestoreLauncherCategory(application, GetAndroidAttribute(alias, "targetActivity"));
-
                 Remove(alias);
             }
 
             return aliases.Count > 0;
         }
 
-        private static void RestoreLauncherCategory(XmlElement application, string activityName)
+        /// <summary>
+        ///     In the manifest of the launcher module, removes the launcher filter of an activity from the merged manifest,
+        ///     and gives the activity a copy of the filter without the launcher category. The merger finds the filter to
+        ///     remove by its actions and categories, so the removal copies all its elements.
+        /// </summary>
+        private static void AddFilterRemoval(XmlElement application, string activityName, XmlElement filter)
         {
-            var activity = Elements(application, "activity").FirstOrDefault(element => GetAndroidAttribute(element, "name") == activityName);
-            var filter = activity == null ? null : FindFilter(activity, false);
-            if (filter == null || FindCategory(filter) != null) return;
+            var document = application.OwnerDocument;
+            if (document.DocumentElement.GetNamespaceOfPrefix(TOOLS_PREFIX) != TOOLS_NAMESPACE) document.DocumentElement.SetAttribute("xmlns:" + TOOLS_PREFIX, TOOLS_NAMESPACE);
 
-            var first = Elements(filter, null).FirstOrDefault();
-            var category = CreateElement(filter.OwnerDocument, "category", ("name", LAUNCHER_CATEGORY));
-            filter.PrependChild(category);
-            filter.PrependChild(filter.OwnerDocument.CreateWhitespace("\n" + (first == null ? IndentOf(filter) + INDENT : IndentOf(first))));
+            var activity = Elements(application, "activity").FirstOrDefault(element => GetAndroidAttribute(element, "name") == activityName) ?? AppendElement(application, CreateElement(document, "activity", ("name", activityName)));
+            SetAttribute(AppendCopy(activity, filter), TOOLS_PREFIX, TOOLS_NAMESPACE, "node", "remove");
+            Remove(FindCategory(AppendCopy(activity, filter)));
+        }
+
+        /// <summary>
+        ///     Removes the filter removals of a previous build with the copies that follow them, and the activities they
+        ///     leave with nothing but their name.
+        /// </summary>
+        private static bool RemoveFilterRemovals(XmlElement application)
+        {
+            var removals = Elements(application, "activity").SelectMany(activity => Elements(activity, "intent-filter")).Where(IsFilterRemoval).ToList();
+            foreach (var removal in removals)
+            {
+                var activity = (XmlElement)removal.ParentNode;
+                var copy = Elements(activity, null).SkipWhile(element => element != removal).Skip(1).FirstOrDefault();
+                if (copy != null && IsCopyWithoutLauncher(copy, removal)) Remove(copy);
+
+                Remove(removal);
+                Collapse(activity);
+                if (!activity.IsEmpty || activity.Attributes.Count > 1) continue;
+
+                Remove(activity);
+                Collapse(application);
+            }
+
+            return removals.Count > 0;
+        }
+
+        private static bool IsFilterRemoval(XmlElement filter)
+        {
+            return filter.GetAttribute("node", TOOLS_NAMESPACE) == "remove" && FindCategory(filter) != null;
+        }
+
+        /// <summary>
+        ///     Whether a filter is the copy of a removed filter that the build gives the activity: its elements, without
+        ///     the launcher category.
+        /// </summary>
+        private static bool IsCopyWithoutLauncher(XmlElement filter, XmlElement removal)
+        {
+            var category = FindCategory(removal);
+            return filter.Name == "intent-filter" && !filter.HasAttribute("node", TOOLS_NAMESPACE) && Elements(filter, null).Select(element => element.OuterXml).SequenceEqual(Elements(removal, null).Where(element => element != category).Select(element => element.OuterXml));
+        }
+
+        /// <summary>
+        ///     Appends to an activity a copy of a filter of another manifest, with its attributes and its elements.
+        /// </summary>
+        private static XmlElement AppendCopy(XmlElement activity, XmlElement filter)
+        {
+            var document = activity.OwnerDocument;
+            var copy = AppendElement(activity, document.CreateElement(filter.Name));
+            foreach (var attribute in filter.Attributes.OfType<XmlAttribute>())
+            {
+                copy.Attributes.Append((XmlAttribute)document.ImportNode(attribute, true));
+            }
+
+            foreach (var element in Elements(filter, null))
+            {
+                AppendElement(copy, (XmlElement)document.ImportNode(element, true));
+            }
+
+            return copy;
         }
 
         private static XmlElement CreateAlias(XmlDocument document, string name, string icon, bool isEnabled, string targetActivity, string indent)
@@ -97,11 +162,11 @@ namespace Javienne.AlternateAppIcons
         }
 
         /// <summary>
-        ///     Intent filter of an activity with the main action, and with the launcher category or without it.
+        ///     Intent filter of an activity with the main action and the launcher category.
         /// </summary>
-        private static XmlElement FindFilter(XmlElement activity, bool hasLauncherCategory)
+        private static XmlElement FindLauncherFilter(XmlElement activity)
         {
-            return Elements(activity, "intent-filter").FirstOrDefault(filter => Elements(filter, "action").Any(action => GetAndroidAttribute(action, "name") == MAIN_ACTION) && (FindCategory(filter) != null) == hasLauncherCategory);
+            return Elements(activity, "intent-filter").FirstOrDefault(filter => Elements(filter, "action").Any(action => GetAndroidAttribute(action, "name") == MAIN_ACTION) && FindCategory(filter) != null);
         }
 
         private static XmlElement FindCategory(XmlElement filter)
@@ -135,7 +200,12 @@ namespace Javienne.AlternateAppIcons
         /// </summary>
         private static void SetAndroidAttribute(XmlElement element, string name, string value)
         {
-            var attribute = element.OwnerDocument.CreateAttribute(ANDROID_PREFIX, name, ANDROID_NAMESPACE);
+            SetAttribute(element, ANDROID_PREFIX, ANDROID_NAMESPACE, name, value);
+        }
+
+        private static void SetAttribute(XmlElement element, string prefix, string namespaceUri, string name, string value)
+        {
+            var attribute = element.OwnerDocument.CreateAttribute(prefix, name, namespaceUri);
             attribute.Value = value;
             element.Attributes.Append(attribute);
         }
@@ -144,6 +214,25 @@ namespace Javienne.AlternateAppIcons
         {
             parent.AppendChild(parent.OwnerDocument.CreateWhitespace("\n" + indent));
             parent.AppendChild(child);
+        }
+
+        /// <summary>
+        ///     Appends an element after the last element of a parent, on a line of its own.
+        /// </summary>
+        private static XmlElement AppendElement(XmlElement parent, XmlElement element)
+        {
+            var last = Elements(parent, null).LastOrDefault();
+            if (last != null) return (XmlElement)InsertAfter(last, element, IndentOf(last));
+
+            var indent = IndentOf(parent);
+            foreach (var whitespace in parent.ChildNodes.OfType<XmlWhitespace>().ToList())
+            {
+                parent.RemoveChild(whitespace);
+            }
+
+            AppendChild(parent, element, indent + INDENT);
+            parent.AppendChild(parent.OwnerDocument.CreateWhitespace("\n" + indent));
+            return element;
         }
 
         private static XmlNode InsertAfter(XmlNode previous, XmlNode node, string indent)
@@ -164,12 +253,27 @@ namespace Javienne.AlternateAppIcons
         }
 
         /// <summary>
+        ///     Writes an element left with nothing but whitespace as an empty element, as Unity writes them.
+        /// </summary>
+        private static void Collapse(XmlElement element)
+        {
+            if (element.ChildNodes.OfType<XmlNode>().All(node => node is XmlWhitespace)) element.IsEmpty = true;
+        }
+
+        /// <summary>
         ///     Indentation of a node, from the whitespace before it.
         /// </summary>
         private static string IndentOf(XmlNode node)
         {
             var whitespace = node.PreviousSibling is XmlWhitespace previous ? previous.Value : string.Empty;
             return whitespace.Substring(whitespace.LastIndexOf('\n') + 1);
+        }
+
+        private static XmlDocument Load(string manifest)
+        {
+            var document = new XmlDocument { PreserveWhitespace = true };
+            document.LoadXml(manifest);
+            return document;
         }
 
         private static string Serialize(XmlDocument document)
